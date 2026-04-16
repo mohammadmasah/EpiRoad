@@ -1,0 +1,7 @@
+venv/
+.DS_Store
+*.pyc
+__pycache__/
+backend/app/services/token.json
+backend/app/services/client_secret.json
+backend/app/services/jobs_data.json
