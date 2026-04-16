@@ -1,47 +1,63 @@
-import json
 import os
-from google_sync import get_google_service
+import json
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-def update_spreadsheet():
-    # Detect path
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    json_path = os.path.join(base_path, 'jobs_data.json')
+def sync_data():
+    # 1. Configuration
+    SERVICE_ACCOUNT_FILE = 'service_account.json'
+    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+    DATA_FILE = 'jobs_data.json'
     
+    # Using your Spreadsheet ID
+    SPREADSHEET_ID = '1lzeeh4x981Icoebbr8jNifSMJ7Qlgt1jgFIBctWOH4s'
+
+    # 2. Authentication
     try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            jobs = json.load(f)
-    except FileNotFoundError:
-        print("❌ JSON file not found.")
+        creds = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        service = build('sheets', 'v4', credentials=creds)
+    except Exception as e:
+        print(f"❌ Authentication Error: {e}")
         return
 
+    # 3. Load Scraped Data
     try:
-        service = get_google_service()
-        
-        # 1. CREATE A BRAND NEW FILE (No IDs needed)
-        print("Creating a brand new spreadsheet...")
-        spreadsheet_body = {'properties': {'title': 'EpiRoad Final Results'}}
-        new_file = service.spreadsheets().create(body=spreadsheet_body).execute()
-        new_id = new_file.get('spreadsheetId')
-        
-        # 2. PREPARE THE DATA
-        values = [["Job Title", "Company", "Location", "Link"]]
-        for job in jobs:
-            values.append([job.get('title'), job.get('company'), job.get('location'), job.get('link')])
-
-        # 3. UPLOAD DATA
-        print(f"📤 Uploading {len(jobs)} jobs to the new sheet...")
-        service.spreadsheets().values().update(
-            spreadsheetId=new_id,
-            range="Sheet1!A1",
-            valueInputOption='USER_ENTERED',
-            body={'values': values}
-        ).execute()
-        
-        print(f"✅ SUCCESS! New file created.")
-        print(f"🔗 LINK: https://docs.google.com/spreadsheets/d/{new_id}")
-
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            jobs = json.load(f)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Data Loading Error: {e}")
+        return
+
+    # 4. Prepare Data
+    values = [["Title", "Company", "Location", "Contract", "Link"]]
+    job_list = jobs if isinstance(jobs, list) else jobs.values()
+    
+    for job in job_list:
+        values.append([
+            job.get('title', 'N/A'),
+            job.get('company', 'N/A'),
+            job.get('location', 'N/A'),
+            job.get('contract', 'N/A'),
+            job.get('link', 'N/A')
+        ])
+
+    # 5. Update the EXISTING Spreadsheet
+    try:
+        body = {'values': values}
+        # First we update the sheet
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID, 
+            range="Sheet1!A1",
+            valueInputOption="RAW", 
+            body=body
+        ).execute()
+
+        print(f"✅ Success! {len(values)-1} jobs synchronized to your existing sheet.")
+        print(f"🔗 View here: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+        
+    except Exception as e:
+        print(f"❌ Google API Error: {e}")
 
 if __name__ == "__main__":
-    update_spreadsheet()
+    sync_data()
