@@ -6,3 +6,4 @@ backend/app/services/token.json
 backend/app/services/client_secret.json
 backend/app/services/jobs_data.json
 backend/app/services/services_account.json
+.env
