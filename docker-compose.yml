@@ -34,14 +34,14 @@ services:
       - postgres
       - redis
 
-  web:
-    build: ./frontend
-    networks:
-      - epiroad_network
-    ports:
-      - 3000:3000
-    depends_on:
-     - api
+  # web:
+  #   build: ./frontend
+  #   networks:
+  #     - epiroad_network
+  #   ports:
+  #     - 3000:3000
+  #   depends_on:
+  #    - api
 
 volumes:
   postgres_data:
